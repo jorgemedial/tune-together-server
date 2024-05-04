@@ -69,14 +69,14 @@ class User(db.Model):
     arrival_date: Mapped[datetime.date] = mapped_column(nullable=False)
 
     def to_dict(self):
-        return json.dumps({
+        return {
             "id": self.id,
             "name": self.name,
             "style": self.style.name,
             "city": self.city.name,
             "departure_time": self.departure_date.strftime("%Y/%m/%d"),
             "arrival_date": self.arrival_date.strftime("%Y/%m/%d")
-        })
+        }
 
 
 @dataclass
@@ -106,7 +106,7 @@ class SocialEvent(db.Model):
             "id": self.id,
             "name": self.name,
             "city": self.city.name,
-            "date": self.date,
+            "date": self.date.strftime("%Y/%m/%d"),
             "price": self.price,
             "style": self.style.name
         }

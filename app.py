@@ -1,3 +1,4 @@
+import json
 from flask import Flask, jsonify, Response
 import pandas as pd
 
@@ -43,13 +44,17 @@ def load_dummy_social_events():
 @app.route("/users", methods=["GET"])
 def get_users():
     user_list = [user.to_dict() for user in User.query.all()]
-    return Response(user_list, status=200)
+    return Response(json.dumps(user_list), status=200)
 
 @app.route("/user/<id>", methods=["GET"])
 def get_user(id):
     user = User.query.filter_by(id=id).one()
     return jsonify(user.to_dict()), 200
 
+@app.route("/social-events", methods=["GET"])
+def get_social_events():
+    social_event_list = [social_event.to_dict() for social_event in SocialEvent.query.all()]
+    return Response(json.dumps(social_event_list), status=200)
 
 if __name__ == '__main__':
     app.run(debug=True)
