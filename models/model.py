@@ -2,13 +2,14 @@ import datetime
 import json
 from typing import List
 from dataclasses import dataclass
-from sqlalchemy import ForeignKey, exc
+from sqlalchemy import ForeignKey, exc, select, text
 
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship
 
 from flask_sqlalchemy import SQLAlchemy
+
 
 
 class Base(DeclarativeBase):
@@ -39,8 +40,13 @@ class Style(db.Model):
         session.add(style)
         session.commit()
 
-    
+@dataclass
+class CityDistance(db.Model):
+    __tablename__ = "citydistance"
 
+    origin_id: Mapped[str] = mapped_column(ForeignKey("city.id"), primary_key=True)
+    destination_id: Mapped[str] = mapped_column(ForeignKey("city.id"), primary_key=True)
+    distance: Mapped[int] = mapped_column(nullable=False)
 
 @dataclass
 class StylesMatch(db.Model):
@@ -48,12 +54,12 @@ class StylesMatch(db.Model):
 
     user_style_id: Mapped[str] = mapped_column(ForeignKey("style.id"), primary_key=True)
     social_event_style_id: Mapped[str] = mapped_column(ForeignKey("style.id"), primary_key=True)
-    match_value: Mapped[float] = mapped_column(nullable=True)
+    match_rate: Mapped[float] = mapped_column(nullable=True)
 
-    def add(user_style, social_event_style, match_value, session):
-        styles_match = StylesMatch(user_style_id=user_style.id, social_event_style_id=social_event_style.id, match_value=match_value)
-        session.add(styles_match)
-        session.commit()
+    # def add(user_style, social_event_style, match_value, session):
+    #     styles_match = StylesMatch(user_style_id=user_style.id, social_event_style_id=social_event_style.id, match_rate=match_value)
+    #     session.add(styles_match)
+    #     session.commit()
 
 
 class User(db.Model):
@@ -87,6 +93,7 @@ class City(db.Model):
     name: Mapped[str] = mapped_column(nullable=True)
     social_events: Mapped[List["SocialEvent"]] = relationship(back_populates="city")
     users: Mapped[List["User"]] = relationship(back_populates="city")
+    
 
 
 class SocialEvent(db.Model):
@@ -110,6 +117,89 @@ class SocialEvent(db.Model):
             "price": self.price,
             "style": self.style.name
         }
+    @staticmethod
+    def format_list_sql(values):
+        return ','.join([f"'{value}'" for value in values])
+
+    def get_social_events_for_users(self, user_ids):
+        stmt = text(
+f"""
+WITH
+social_cte AS (
+    SELECT 
+        social_event.name AS event_name,
+        social_event.price AS price,
+        social_event.date AS date,
+        social_event.city_id AS city_id,
+        social_event.style_id AS style_id,
+        city.name AS city,
+        style.name AS style
+    FROM
+        social_event
+    JOIN city
+        on city.id = social_event.city_id
+    JOIN style
+        on style.id = social_event.style_id 
+),
+
+
+FILTER_USER AS(
+    SELECT
+        s.*,
+        u.name as user_name,
+        u.id as user_id,
+        u.city_id as user_city_id,
+        u.style_id as user_style_id
+    FROM social_cte as s
+    CROSS JOIN "user" as u
+    WHERE 
+        u.id in ({self.format_list_sql(user_ids)}) and
+        u.departure_date <= s.date and
+        u.arrival_date >= s.date
+),
+
+ADD_DISTANCE AS(
+    SELECT
+        f.*,
+        cd.distance as distance
+    FROM FILTER_USER AS f
+    JOIN citydistance AS cd
+        on cd.origin_id = f.user_city_id 
+        and cd.destination_id = f.city_id       
+),
+
+ADD_MATCH AS(
+    SELECT
+        ad.*,
+        sm.match_rate
+    FROM ADD_DISTANCE AS ad
+    JOIN styles_match as sm
+        ON ad.style_id = sm.social_event_style_id
+        and ad.user_style_id = sm.user_style_id
+)
+
+
+SELECT 
+    event_name,
+    price,
+    date,
+    city,
+    style,
+    distance,
+    match_rate
+
+FROM ADD_MATCH;
+
+
+            """
+)
+        
+        return stmt
+    
+
+    
+        
+
 
 
 
