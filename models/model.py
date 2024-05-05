@@ -2,13 +2,14 @@ import datetime
 import json
 from typing import List
 from dataclasses import dataclass
-from sqlalchemy import ForeignKey, exc
+from sqlalchemy import ForeignKey, exc, select
 
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import relationship
 
 from flask_sqlalchemy import SQLAlchemy
+
 
 
 class Base(DeclarativeBase):
@@ -39,8 +40,13 @@ class Style(db.Model):
         session.add(style)
         session.commit()
 
-    
+@dataclass
+class CityDistance(db.Model):
+    __tablename__ = "citydistance"
 
+    origin_id: Mapped[str] = mapped_column(ForeignKey("city.id"), primary_key=True)
+    destination_id: Mapped[str] = mapped_column(ForeignKey("city.id"), primary_key=True)
+    distance: Mapped[int] = mapped_column(nullable=False)
 
 @dataclass
 class StylesMatch(db.Model):
@@ -48,10 +54,10 @@ class StylesMatch(db.Model):
 
     user_style_id: Mapped[str] = mapped_column(ForeignKey("style.id"), primary_key=True)
     social_event_style_id: Mapped[str] = mapped_column(ForeignKey("style.id"), primary_key=True)
-    match_value: Mapped[float] = mapped_column(nullable=True)
+    match_rate: Mapped[float] = mapped_column(nullable=True)
 
     def add(user_style, social_event_style, match_value, session):
-        styles_match = StylesMatch(user_style_id=user_style.id, social_event_style_id=social_event_style.id, match_value=match_value)
+        styles_match = StylesMatch(user_style_id=user_style.id, social_event_style_id=social_event_style.id, match_rate=match_value)
         session.add(styles_match)
         session.commit()
 
@@ -87,6 +93,7 @@ class City(db.Model):
     name: Mapped[str] = mapped_column(nullable=True)
     social_events: Mapped[List["SocialEvent"]] = relationship(back_populates="city")
     users: Mapped[List["User"]] = relationship(back_populates="city")
+    
 
 
 class SocialEvent(db.Model):
@@ -110,6 +117,23 @@ class SocialEvent(db.Model):
             "price": self.price,
             "style": self.style.name
         }
+    
+    def map_users_social_events(self):
+        stmt = select(
+                SocialEvent.id, User.id
+            ).filter(
+                SocialEvent.date <= User.departure_date
+            ).filter(
+                 SocialEvent.date >= User.arrival_date
+            )
+        return stmt
+    
+    def add_distance(self, stmt):
+        pass
+    
+    
+        
+
 
 
 

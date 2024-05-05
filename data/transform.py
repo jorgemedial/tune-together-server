@@ -62,3 +62,4 @@ df_social_events.to_csv("data/outputs/social_events.csv", index_label="id")
 
 pd.DataFrame({"name": cities}).to_csv("data/outputs/cities.csv", index_label="id")
 pd.DataFrame({"name": styles}).to_csv("data/outputs/styles.csv", index_label="id")
+
