@@ -55,6 +55,9 @@ def load_dummy_social_events():
 @app.route("/load_dummy_style_match", methods=["GET"])
 def load_dummy_style_match():
     df = pd.read_csv("data/outputs/styles_match.csv")
+    df["match_rate"] = df["match_rate"].values.astype(float)
+    df["user_style_id"] = df["user_style_id"].values.astype(str)
+    df["social_event_style_id"] = df["social_event_style_id"].values.astype(str)
     load_from_pandas(StylesMatch, df[["user_style_id", "social_event_style_id", "match_rate"]].copy(), db.session)
     return Response({"message": "success"}, status=200)
 
@@ -87,13 +90,22 @@ def get_social_events():
     social_event_list = [social_event.to_dict() for social_event in SocialEvent.query.all()]
     return Response(json.dumps(social_event_list), status=200)
 
-@app.route("/map-social-events-users", methods=["GET"])
-def get_social_events_users():
-    stmt = SocialEvent().map_users_social_events()
-    stmt = SocialEvent().add_distance(stmt)
+@app.route("/social_events_for_user/<user_id>", methods=["GET"])
+def get_social_events_for_user(user_id):
+    stmt = SocialEvent().get_social_events_for_users(list(user_id))
     result = db.session.execute(stmt)
-    return Response(status=200)
-
+    result_list = [
+        {
+            "event_name": row.event_name,
+            "price": row.price,
+            "date": row.date.strftime("%Y/%m/%d"),
+            "city": row.city,
+            "distance": row.distance,
+            "match_rate": row.match_rate,
+            "style": row.style
+        }
+        for row in result]
+    return Response(json.dumps(result_list), status=200)
 
 if __name__ == '__main__':
     app.run(debug=True)
