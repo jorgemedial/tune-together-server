@@ -61,9 +61,9 @@ def load_dummy_style_match():
 @app.route("/load_dummy_distances", methods=["GET"])
 def load_dummt_distances():
     df = pd.read_csv("data/outputs/citydistance.csv", sep=",")
-    df["distance"] = df["distance"].values.astype(int).tolist()
-    df["origin_id"] = df["origin_id"].values.astype(int).tolist()
-    df["destination_id"] = df["destination_id"].values.astype(int).tolist()
+    df["distance"] = df["distance"].values.astype(int)
+    df["origin_id"] = df["origin_id"].values.astype(str)
+    df["destination_id"] = df["destination_id"].values.astype(str)
 
     df = df[["origin_id", "destination_id", "distance"]].copy()
     load_from_pandas(CityDistance, df, db.session)
